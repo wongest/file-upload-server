@@ -26,6 +26,8 @@ type StoredFile = {
   mimeType?: string;
   size: number;
   url: string;
+  previewUrl: string;
+  downloadUrl: string;
   uploadedAt?: string;
 };
 
@@ -51,10 +53,26 @@ function buildStoredName(originalName: string): string {
   return `${timestamp}-${crypto.randomUUID()}-${sanitizeName(originalName)}`;
 }
 
-function publicFileUrl(fileName: string): string {
-  const pathPart = `/files/${encodeURIComponent(fileName)}`;
-
+function publicUrl(pathPart: string): string {
   return config.publicBaseUrl ? `${config.publicBaseUrl}${pathPart}` : pathPart;
+}
+
+function publicPreviewUrl(fileName: string): string {
+  return publicUrl(`/files/${encodeURIComponent(fileName)}`);
+}
+
+function publicDownloadUrl(fileName: string): string {
+  return publicUrl(`/files/${encodeURIComponent(fileName)}/download`);
+}
+
+function buildFileUrls(fileName: string): Pick<StoredFile, "url" | "previewUrl" | "downloadUrl"> {
+  const previewUrl = publicPreviewUrl(fileName);
+
+  return {
+    url: previewUrl,
+    previewUrl,
+    downloadUrl: publicDownloadUrl(fileName)
+  };
 }
 
 function toStoredFile(file: Express.Multer.File): StoredFile {
@@ -64,7 +82,7 @@ function toStoredFile(file: Express.Multer.File): StoredFile {
     fileName: file.filename,
     mimeType: file.mimetype,
     size: file.size,
-    url: publicFileUrl(file.filename)
+    ...buildFileUrls(file.filename)
   };
 }
 
@@ -135,7 +153,8 @@ app.get("/", (_req: Request, res: Response) => {
       health: "GET /health",
       upload: "POST /upload",
       list: "GET /files",
-      download: "GET /files/:fileName"
+      preview: "GET /files/:fileName",
+      download: "GET /files/:fileName/download"
     }
   });
 });
@@ -185,7 +204,7 @@ app.get("/files", async (_req: Request, res: Response, next: NextFunction) => {
           return {
             fileName: entry.name,
             size: stat.size,
-            url: publicFileUrl(entry.name),
+            ...buildFileUrls(entry.name),
             uploadedAt: stat.mtime.toISOString()
           };
         })
@@ -202,6 +221,21 @@ app.get("/files", async (_req: Request, res: Response, next: NextFunction) => {
 });
 
 app.get("/files/:fileName", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const filePath = resolveStoredFile(req.params.fileName);
+    await fsp.access(filePath, fs.constants.R_OK);
+    res.sendFile(filePath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      next(new HttpError(404, "File not found", "FILE_NOT_FOUND"));
+      return;
+    }
+
+    next(error);
+  }
+});
+
+app.get("/files/:fileName/download", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const filePath = resolveStoredFile(req.params.fileName);
     await fsp.access(filePath, fs.constants.R_OK);

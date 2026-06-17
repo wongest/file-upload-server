@@ -9,12 +9,44 @@
 - `GET /health`：健康检查。
 - `POST /upload`：使用 `multipart/form-data` 上传一个或多个文件。
 - `GET /files`：查看已保存文件列表。
-- `GET /files/:fileName`：下载指定文件。
+- `GET /files/:fileName`：预览指定文件，图片可以直接在浏览器中打开。
+- `GET /files/:fileName/download`：下载指定文件。
 
 示例：
 
 ```bash
 curl -F "file=@./demo.png" http://localhost:3000/upload
+```
+
+上传成功后会返回类似结果：
+
+```json
+{
+  "files": [
+    {
+      "fieldName": "file",
+      "originalName": "demo.png",
+      "fileName": "20260617023314-xxx-demo.png",
+      "mimeType": "image/png",
+      "size": 12345,
+      "url": "/files/20260617023314-xxx-demo.png",
+      "previewUrl": "/files/20260617023314-xxx-demo.png",
+      "downloadUrl": "/files/20260617023314-xxx-demo.png/download"
+    }
+  ]
+}
+```
+
+浏览器预览图片：
+
+```text
+http://localhost:3000/files/20260617023314-xxx-demo.png
+```
+
+下载文件：
+
+```text
+http://localhost:3000/files/20260617023314-xxx-demo.png/download
 ```
 
 ## 本地开发
@@ -42,8 +74,12 @@ workflow，会执行以下步骤：
 
 1. 安装依赖并构建 TypeScript。
 2. 构建 Docker 镜像并推送到镜像仓库。
-3. 把 `docker-compose.prod.yml` 和生成的 `.env` 上传到远程服务器。
+3. 把生成的 `.env` 上传到远程服务器。
 4. 在远程服务器执行 `docker compose pull` 和 `docker compose up -d`。
+
+远程服务器上的 `docker-compose.yml` 需要手动维护，并放在 `DEPLOY_PATH` 指定的目录
+中。仓库里的 [docker-compose.prod.yml](docker-compose.prod.yml) 可以作为服务器端
+Compose 文件参考。
 
 ### GitHub Actions Variables
 
@@ -81,8 +117,8 @@ workflow，会执行以下步骤：
 
 - `SERVER_PORT`：远程服务器 SSH 端口，默认 `22`。
 
-远程服务器需要提前安装 Docker 和 Docker Compose plugin。workflow 会先登录镜像仓库，
-再拉取新镜像并更新服务。
+远程服务器需要提前安装 Docker 和 Docker Compose plugin，并在 `DEPLOY_PATH` 目录中
+准备好 `docker-compose.yml`。workflow 会先登录镜像仓库，再拉取新镜像并更新服务。
 
 ## 镜像命名规则
 
