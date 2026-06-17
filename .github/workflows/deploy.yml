@@ -196,7 +196,7 @@ jobs:
               -u "${IMAGE_REGISTRY_USERNAME}" --password-stdin
           fi
 
-          docker compose --env-file .env -f docker-compose.yml pull
-          docker compose --env-file .env -f docker-compose.yml up -d --remove-orphans
+          docker compose --env-file .env -f docker-compose.yaml pull
+          docker compose --env-file .env -f docker-compose.yaml up -d --remove-orphans
           docker image prune -f
           REMOTE
