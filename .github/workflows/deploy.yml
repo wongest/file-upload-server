@@ -148,20 +148,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y sshpass
 
-      - name: Upload env file
-        shell: bash
-        run: |
-          set -euo pipefail
-          : "${SERVER_PASSWORD:?Set secret SERVER_PASSWORD}"
-          export SSHPASS="${SERVER_PASSWORD}"
-
-          remote_dir="$(printf '%q' "${DEPLOY_PATH}")"
-          sshpass -e ssh -o StrictHostKeyChecking=no -p "${SERVER_PORT}" \
-            "${SERVER_USER}@${SERVER_HOST}" "mkdir -p ${remote_dir}"
-          sshpass -e scp -o StrictHostKeyChecking=no -P "${SERVER_PORT}" \
-            .deploy/.env \
-            "${SERVER_USER}@${SERVER_HOST}:${DEPLOY_PATH}/"
-
       - name: Deploy on remote server
         shell: bash
         run: |
@@ -196,7 +182,7 @@ jobs:
               -u "${IMAGE_REGISTRY_USERNAME}" --password-stdin
           fi
 
-          docker compose --env-file .env -f docker-compose.yaml pull
-          docker compose --env-file .env -f docker-compose.yaml up -d --remove-orphans
+          docker compose -f docker-compose.yaml pull
+          docker compose -f docker-compose.yaml up -d --remove-orphans
           docker image prune -f
           REMOTE
