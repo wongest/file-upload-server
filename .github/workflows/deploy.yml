@@ -1,16 +1,17 @@
 name: Build and deploy
 
 on:
-  push:
-    branches:
-      - main
-      - master
   workflow_dispatch:
+    inputs:
+      image_namespace:
+        description: "Docker image namespace, for example owner or org"
+        required: false
+        type: string
 
 env:
   NODE_VERSION: "22"
-  IMAGE_REGISTRY: ${{ vars.IMAGE_REGISTRY }}
-  IMAGE_NAMESPACE: ${{ vars.IMAGE_NAMESPACE }}
+  IMAGE_REGISTRY: ${{ secrets.IMAGE_REGISTRY }}
+  IMAGE_NAMESPACE: ${{ inputs.image_namespace || vars.IMAGE_NAMESPACE }}
 
 jobs:
   build-and-push:
@@ -39,8 +40,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          : "${IMAGE_REGISTRY:?Set GitHub variable IMAGE_REGISTRY, for example ghcr.io}"
-          : "${IMAGE_NAMESPACE:?Set GitHub variable IMAGE_NAMESPACE, for example owner}"
+          : "${IMAGE_REGISTRY:?Set GitHub secret IMAGE_REGISTRY, for example ghcr.io}"
+          : "${IMAGE_NAMESPACE:?Set workflow input image_namespace or GitHub variable IMAGE_NAMESPACE, for example owner}"
 
           project_name="$(node -p "require('./package.json').name")"
           project_name="${project_name#@}"
